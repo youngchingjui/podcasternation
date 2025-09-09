@@ -6,6 +6,7 @@ import useS3Images from "@/lib/hooks/useS3Images";
 import { GallerySection } from "@/components/GallerySection";
 import SignOutButton from "@/components/SignOutButton";
 import UploadsSection from "@/components/UploadsSection";
+import MovieReviewsSection from "@/components/MovieReviewsSection";
 
 export default function Home() {
   const hero = useS3Images("public/hero.jpeg");
@@ -28,6 +29,9 @@ export default function Home() {
             </a>
             <a href="#outings" className="hover:underline">
               Outings
+            </a>
+            <a href="#movies" className="hover:underline">
+              Movies
             </a>
             <a href="#uploads" className="hover:underline">
               Uploads
@@ -161,6 +165,9 @@ export default function Home() {
           prefix="public/outings/"
           emptyPlaceholderCount={0}
         />
+
+        {/* Movies - reviews with Greg's weighted opinion */}
+        <MovieReviewsSection />
 
         {/* Uploads to S3 */}
         <UploadsSection />
