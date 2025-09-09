@@ -16,9 +16,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Podcasternation",
   description: "Podcasternation: podcasts, burgers, and more",
-  icons: {
-    icon: "/burger-placeholder.svg",
-  },
 };
 
 export default function RootLayout({
