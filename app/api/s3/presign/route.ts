@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 const REGION = process.env.AWS_REGION;
 const BUCKET = process.env.S3_BUCKET_NAME;
 const PUBLIC_BASE = process.env.S3_PUBLIC_BASE_URL; // e.g. https://cdn.example.com or https://my-bucket.s3.us-east-1.amazonaws.com
-const PREFIX = process.env.S3_UPLOAD_PREFIX ?? "uploads/";
+const DEFAULT_PREFIX = process.env.S3_UPLOAD_PREFIX ?? "uploads/";
 
 function assertEnv() {
   const missing: string[] = [];
@@ -21,13 +21,17 @@ function assertEnv() {
   }
 }
 
-function keyFrom(filename?: string) {
-  const safe = (filename ?? "file")
-    .replace(/[^a-zA-Z0-9._-]/g, "-")
-    .slice(0, 80);
+function sanitizePrefix(prefix: string | null): string {
+  const p = (prefix ?? DEFAULT_PREFIX).replace(/\\/g, "/");
+  if (p.startsWith("/") || p.includes("..")) return DEFAULT_PREFIX;
+  return p.endsWith("/") ? p : `${p}/`;
+}
+
+function keyFrom(filename: string | undefined, prefix: string) {
+  const safe = (filename ?? "file").replace(/[^a-zA-Z0-9._-]/g, "-").slice(0, 80);
   const id = randomUUID();
   const date = new Date().toISOString().replace(/[:.]/g, "");
-  return `${PREFIX}${date}-${id}-${safe}`;
+  return `${prefix}${date}-${id}-${safe}`;
 }
 
 function publicUrlForKey(key: string) {
@@ -40,9 +44,10 @@ export async function POST(req: NextRequest) {
   try {
     assertEnv();
 
-    const { contentType, filename } = (await req.json()) as {
+    const { contentType, filename, prefix: rawPrefix } = (await req.json()) as {
       contentType?: string;
       filename?: string;
+      prefix?: string;
     };
     if (!contentType) {
       return NextResponse.json(
@@ -51,7 +56,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const key = keyFrom(filename);
+    const prefix = sanitizePrefix(rawPrefix ?? null);
+    const key = keyFrom(filename, prefix);
 
     const client = new S3Client({ region: REGION });
     const command = new PutObjectCommand({
@@ -72,3 +78,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

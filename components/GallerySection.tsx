@@ -1,5 +1,6 @@
 import useS3Images from "@/lib/hooks/useS3Images";
 import Image from "next/image";
+import UploadTile from "./UploadTile";
 
 export function GallerySection({
   id,
@@ -16,7 +17,7 @@ export function GallerySection({
   emptyPlaceholderCount?: number;
   emptyPlaceholderSrc?: string;
 }) {
-  const { images, loading } = useS3Images(prefix);
+  const { images, loading, reload } = useS3Images(prefix);
   const hasImages = images.length > 0;
 
   return (
@@ -60,7 +61,10 @@ export function GallerySection({
         {!hasImages && !emptyPlaceholderSrc && !loading && (
           <p className="text-sm text-slate-500">No images yet.</p>
         )}
+        {/* Reusable upload tile at the end */}
+        <UploadTile prefix={prefix} onUploaded={() => reload()} />
       </div>
     </section>
   );
 }
+
