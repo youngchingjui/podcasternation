@@ -1,13 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useConvexAuth } from "convex/react";
-import { useAuthActions } from "@convex-dev/auth/react";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 import Image from "next/image";
+import useS3Images from "@/lib/hooks/useS3Images";
+import { GallerySection } from "@/components/GallerySection";
+import SignOutButton from "@/components/SignOutButton";
+import UploadsSection from "@/components/UploadsSection";
 
 export default function Home() {
+  const hero = useS3Images("public/hero.jpeg");
+  const heroUrl =
+    hero.images.find((i) => i.key === "public/hero.jpeg")?.url ?? null;
+
   return (
     <>
       <header className="sticky top-0 z-10 bg-background/80 backdrop-blur border-b border-slate-200 dark:border-slate-800">
@@ -21,6 +25,9 @@ export default function Home() {
             </a>
             <a href="#burgers" className="hover:underline">
               Burgers
+            </a>
+            <a href="#outings" className="hover:underline">
+              Outings
             </a>
             <a href="#uploads" className="hover:underline">
               Uploads
@@ -61,18 +68,21 @@ export default function Home() {
                 See Burger Collage
               </a>
             </div>
-            <p className="text-xs text-slate-500 mt-2">
-              Hero image is a placeholder for now — replace
-              /public/hero-placeholder.svg with your photo later.
-            </p>
+            {!heroUrl && (
+              <p className="text-xs text-slate-500 mt-2">
+                Hero image is a placeholder for now — upload to s3://
+                {process.env.S3_BUCKET_NAME}/public/hero.jpeg to replace it.
+              </p>
+            )}
           </div>
           <div className="w-full">
             <Image
-              src="/hero-placeholder.svg"
-              alt="Placeholder hero of Greg, Michael & Ching"
+              src={heroUrl ?? "/hero-placeholder.svg"}
+              alt="Hero of Greg, Michael & Ching"
               className="w-full h-72 sm:h-96 object-cover rounded-xl shadow"
-              width={1000}
-              height={1000}
+              width={1600}
+              height={1200}
+              priority
             />
           </div>
         </section>
@@ -119,27 +129,24 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Burgers collage */}
-        <section id="burgers" className="flex flex-col gap-6">
-          <h2 className="text-3xl font-semibold">Burger Collage</h2>
-          <p className="text-slate-600 dark:text-slate-300">
-            A tasty grid of our burger outings. Replace placeholders with your
-            photos.
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="aspect-[4/3] overflow-hidden rounded-md">
-                <Image
-                  src="/burger-placeholder.svg"
-                  alt={`Burger ${i + 1}`}
-                  className="w-full h-full object-cover"
-                  width={1000}
-                  height={1000}
-                />
-              </div>
-            ))}
-          </div>
-        </section>
+        {/* Burgers collage from S3 */}
+        <GallerySection
+          id="burgers"
+          title="Burger Collage"
+          description="A tasty grid of our burger outings."
+          prefix="public/burgers/"
+          emptyPlaceholderCount={12}
+          emptyPlaceholderSrc="/burger-placeholder.svg"
+        />
+
+        {/* Outings collage from S3 */}
+        <GallerySection
+          id="outings"
+          title="Outings"
+          description="A montage of our gatherings."
+          prefix="public/outings/"
+          emptyPlaceholderCount={0}
+        />
 
         {/* Uploads to S3 */}
         <UploadsSection />
@@ -166,126 +173,5 @@ export default function Home() {
         © {new Date().getFullYear()} Greg · Michael · Ching
       </footer>
     </>
-  );
-}
-
-function SignOutButton() {
-  const { isAuthenticated } = useConvexAuth();
-  const { signOut } = useAuthActions();
-  const router = useRouter();
-  if (!isAuthenticated) return null;
-  return (
-    <button
-      className="bg-slate-200 dark:bg-slate-800 text-foreground rounded-md px-2 py-1 text-sm"
-      onClick={() =>
-        void signOut().then(() => {
-          router.push("/signin");
-        })
-      }
-    >
-      Sign out
-    </button>
-  );
-}
-
-function UploadsSection() {
-  const [images, setImages] = useState<Array<{ key: string; url: string }>>([]);
-  const [file, setFile] = useState<File | null>(null);
-  const [status, setStatus] = useState<
-    "idle" | "uploading" | "error" | "success"
-  >("idle");
-  const [error, setError] = useState<string | null>(null);
-
-  async function fetchImages() {
-    try {
-      const res = await fetch("/api/s3/list", { cache: "no-store" });
-      const data = await res.json();
-      if (res.ok) setImages(data.images);
-    } catch (e) {
-      console.error("fetchImages error", e);
-    }
-  }
-
-  useEffect(() => {
-    void fetchImages();
-  }, []);
-
-  async function handleUpload() {
-    if (!file) return;
-    setStatus("uploading");
-    setError(null);
-    try {
-      const presignRes = await fetch("/api/s3/presign", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contentType: file.type, filename: file.name }),
-      });
-      const { url } = await presignRes.json();
-      if (!presignRes.ok) throw new Error("Failed to get upload URL");
-
-      const uploadRes = await fetch(url, {
-        method: "PUT",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
-      if (!uploadRes.ok) throw new Error("Upload failed");
-
-      setStatus("success");
-      setFile(null);
-      await fetchImages();
-    } catch (e) {
-      setStatus("error");
-      setError(e instanceof Error ? e.message : "Something went wrong");
-    }
-  }
-
-  return (
-    <section id="uploads" className="flex flex-col gap-6">
-      <h2 className="text-3xl font-semibold">Your uploads (S3)</h2>
-      <p className="text-slate-600 dark:text-slate-300">
-        Choose an image to upload directly to S3. We&apos;ll show the most
-        recent ones below.
-      </p>
-      <div className="flex items-center gap-3">
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          className="text-sm"
-        />
-        <button
-          onClick={() => void handleUpload()}
-          disabled={!file || status === "uploading"}
-          className="text-sm px-3 py-1.5 rounded-md bg-foreground text-background disabled:opacity-50"
-        >
-          {status === "uploading" ? "Uploading..." : "Upload to S3"}
-        </button>
-        {error && <span className="text-xs text-red-500">{error}</span>}
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-        {images.map((img) => (
-          <div
-            key={img.key}
-            className="aspect-[4/3] overflow-hidden rounded-md"
-          >
-            <Image
-              src={img.url}
-              alt={img.key}
-              className="w-full h-full object-cover"
-              width={1000}
-              height={1000}
-            />
-          </div>
-        ))}
-        {images.length === 0 && (
-          <p className="text-sm text-slate-500">No uploads yet.</p>
-        )}
-      </div>
-      <p className="text-xs text-slate-500">
-        Note: Make sure your S3 bucket CORS allows PUT from this origin and
-        objects are publicly viewable or served via a CDN.
-      </p>
-    </section>
   );
 }

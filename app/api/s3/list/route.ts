@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 const REGION = process.env.AWS_REGION;
 const BUCKET = process.env.S3_BUCKET_NAME;
 const PUBLIC_BASE = process.env.S3_PUBLIC_BASE_URL; // e.g. https://cdn.example.com or https://my-bucket.s3.us-east-1.amazonaws.com
-const PREFIX = process.env.S3_UPLOAD_PREFIX ?? "uploads/";
+const DEFAULT_PREFIX = process.env.S3_UPLOAD_PREFIX ?? "uploads/";
 
 function assertEnv() {
   const missing: string[] = [];
@@ -24,14 +24,22 @@ function publicUrlForKey(key: string) {
   return `https://${BUCKET}.s3.${REGION}.amazonaws.com/${key}`;
 }
 
-export async function GET(_req: NextRequest) {
+function sanitizePrefix(prefix: string | null): string {
+  // prevent directory traversal or absolute paths
+  const p = (prefix ?? DEFAULT_PREFIX).replace(/\\/g, "/");
+  if (p.startsWith("/") || p.includes("..")) return DEFAULT_PREFIX;
+  return p;
+}
+
+export async function GET(req: NextRequest) {
   try {
     assertEnv();
+    const prefix = sanitizePrefix(req.nextUrl.searchParams.get("prefix"));
     const client = new S3Client({ region: REGION });
     const command = new ListObjectsV2Command({
       Bucket: BUCKET,
-      Prefix: PREFIX,
-      MaxKeys: 30,
+      Prefix: prefix,
+      MaxKeys: 60,
     });
     const res = await client.send(command);
     const items = (res.Contents ?? [])
@@ -40,7 +48,7 @@ export async function GET(_req: NextRequest) {
         (a, b) =>
           (b.LastModified?.getTime() ?? 0) - (a.LastModified?.getTime() ?? 0),
       )
-      .slice(0, 24)
+      .slice(0, 32)
       .map((obj) => ({
         key: obj.Key!,
         url: publicUrlForKey(obj.Key!),
@@ -48,7 +56,7 @@ export async function GET(_req: NextRequest) {
         lastModified: obj.LastModified?.toISOString() ?? null,
         etag: obj.ETag ?? null,
       }));
-    return NextResponse.json({ images: items });
+    return NextResponse.json({ images: items, prefix });
   } catch (e) {
     console.error("list error", e);
     return NextResponse.json(
@@ -57,3 +65,4 @@ export async function GET(_req: NextRequest) {
     );
   }
 }
+
