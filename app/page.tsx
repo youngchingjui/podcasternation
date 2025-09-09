@@ -96,16 +96,25 @@ export default function Home() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
               {
+                title: "Ximalaya Podcast Album",
+                desc: "Listen on Ximalaya (Chinese).",
+                url:
+                  "https://m.ximalaya.com/selfshare/albumnew/57225991?shrpid=17f1743ec51e451&shrdv=8E31F186-A46B-4D88-ACA4-85AF90ADB7EE&shareLevel=1&commandShareId=ad069485b6b23f2b44d88227caf67535&shrh5=iphone&shrid=17f1743ec51ca87&shareTime=1645362801745&uid=392586553&shrdh=1&subType=1107",
+              },
+              {
                 title: "Episode 1 — How We Met",
                 desc: "Origin stories, early projects, and what keeps us collaborating.",
+                url: "#",
               },
               {
                 title: "Episode 2 — Burger Philosophy",
                 desc: "From smash to stacked — the debates that shaped our tastings.",
+                url: "#",
               },
               {
                 title: "Episode 3 — Building in Public",
                 desc: "Sharing work, lessons learned, and the joy of shipping.",
+                url: "#",
               },
             ].map((p, i) => (
               <article
@@ -117,9 +126,14 @@ export default function Home() {
                   {p.desc}
                 </p>
                 <div className="mt-4 flex items-center gap-3">
-                  <button className="text-sm px-3 py-1.5 rounded-md bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900">
+                  <a
+                    className="text-sm px-3 py-1.5 rounded-md bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                    href={p.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Listen
-                  </button>
+                  </a>
                   <button className="text-sm px-3 py-1.5 rounded-md border border-slate-300 dark:border-slate-700">
                     Details
                   </button>
@@ -175,3 +189,4 @@ export default function Home() {
     </>
   );
 }
+
