@@ -15,8 +15,8 @@ After the initial setup (<2 minutes) you'll have a working full-stack app using:
 If you just cloned this codebase and didn't use `npm create convex`, run:
 
 ```
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 If you're reading this README on GitHub and want to use this template, run:
@@ -24,6 +24,54 @@ If you're reading this README on GitHub and want to use this template, run:
 ```
 npm create convex@latest -- -t nextjs-convexauth
 ```
+
+## S3 image uploads (what you need to provide)
+
+This repo now supports direct image uploads to Amazon S3 and displays the images on the homepage in the "Your uploads (S3)" section.
+
+Provide these environment variables (e.g., in a `.env.local` file at the repo root).
+
+Required:
+
+- AWS_ACCESS_KEY_ID
+- AWS_SECRET_ACCESS_KEY
+- AWS_REGION (e.g., us-east-1)
+- S3_BUCKET_NAME (name of your bucket)
+
+Optional but recommended:
+
+- S3_PUBLIC_BASE_URL: Base URL used to display the images. Examples:
+  - Your CloudFront domain, e.g. `https://cdn.example.com`
+  - Or the S3 regional domain, e.g. `https://my-bucket.s3.us-east-1.amazonaws.com`
+- S3_UPLOAD_PREFIX: Key prefix for uploaded files. Default: `uploads/`
+
+Bucket CORS configuration (so the browser can PUT directly to S3):
+
+```
+[
+  {
+    "AllowedOrigins": ["http://localhost:3000", "https://your-domain.example"],
+    "AllowedMethods": ["PUT", "GET"],
+    "AllowedHeaders": ["*"]
+  }
+]
+```
+
+Bucket access policy options to make images viewable:
+
+- Simplest: Set `ACL: public-read` on upload (already done in the presign route) and allow public reads in your bucket policy.
+- Preferred: Serve through CloudFront (set `S3_PUBLIC_BASE_URL` to your CloudFront distribution URL) and keep bucket private except for the distribution.
+
+After setting the env vars, start the dev server and try uploading an image in the new section:
+
+```
+pnpm run dev
+```
+
+The code that powers this lives in:
+
+- API routes: `app/api/s3/presign/route.ts` and `app/api/s3/list/route.ts`
+- UI section: `app/page.tsx` (component `UploadsSection`)
 
 ## Learn more
 

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useConvexAuth } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import Image from "next/image";
 
 export default function Home() {
   return (
@@ -20,6 +22,9 @@ export default function Home() {
             <a href="#burgers" className="hover:underline">
               Burgers
             </a>
+            <a href="#uploads" className="hover:underline">
+              Uploads
+            </a>
             <a href="#more" className="hover:underline">
               ...and more
             </a>
@@ -28,7 +33,10 @@ export default function Home() {
         </div>
       </header>
 
-      <main id="home" className="mx-auto max-w-6xl px-4 py-12 sm:py-16 flex flex-col gap-16">
+      <main
+        id="home"
+        className="mx-auto max-w-6xl px-4 py-12 sm:py-16 flex flex-col gap-16"
+      >
         {/* Hero */}
         <section className="grid grid-cols-1 md:grid-cols-2 items-center gap-8 md:gap-12">
           <div className="flex flex-col gap-4">
@@ -40,22 +48,31 @@ export default function Home() {
               great burgers, and having fun building things together.
             </p>
             <div className="flex gap-3">
-              <a href="#podcasts" className="bg-foreground text-background px-4 py-2 rounded-md text-sm">
+              <a
+                href="#podcasts"
+                className="bg-foreground text-background px-4 py-2 rounded-md text-sm"
+              >
                 Explore Podcasts
               </a>
-              <a href="#burgers" className="border border-slate-300 dark:border-slate-700 px-4 py-2 rounded-md text-sm">
+              <a
+                href="#burgers"
+                className="border border-slate-300 dark:border-slate-700 px-4 py-2 rounded-md text-sm"
+              >
                 See Burger Collage
               </a>
             </div>
             <p className="text-xs text-slate-500 mt-2">
-              Hero image is a placeholder for now — replace /public/hero-placeholder.svg with your photo later.
+              Hero image is a placeholder for now — replace
+              /public/hero-placeholder.svg with your photo later.
             </p>
           </div>
           <div className="w-full">
-            <img
+            <Image
               src="/hero-placeholder.svg"
               alt="Placeholder hero of Greg, Michael & Ching"
               className="w-full h-72 sm:h-96 object-cover rounded-xl shadow"
+              width={1000}
+              height={1000}
             />
           </div>
         </section>
@@ -106,30 +123,41 @@ export default function Home() {
         <section id="burgers" className="flex flex-col gap-6">
           <h2 className="text-3xl font-semibold">Burger Collage</h2>
           <p className="text-slate-600 dark:text-slate-300">
-            A tasty grid of our burger outings. Replace placeholders with your photos.
+            A tasty grid of our burger outings. Replace placeholders with your
+            photos.
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {Array.from({ length: 12 }).map((_, i) => (
               <div key={i} className="aspect-[4/3] overflow-hidden rounded-md">
-                <img
+                <Image
                   src="/burger-placeholder.svg"
                   alt={`Burger ${i + 1}`}
                   className="w-full h-full object-cover"
+                  width={1000}
+                  height={1000}
                 />
               </div>
             ))}
           </div>
         </section>
 
+        {/* Uploads to S3 */}
+        <UploadsSection />
+
         {/* And more */}
-        <section id="more" className="flex flex-col gap-4 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+        <section
+          id="more"
+          className="flex flex-col gap-4 rounded-xl border border-slate-200 dark:border-slate-800 p-6"
+        >
           <h2 className="text-2xl font-semibold">...and more</h2>
           <p className="text-slate-600 dark:text-slate-300">
-            This site is just getting started. Want to add photo galleries, episode pages,
-            maps of burger spots, or anything else? Let&apos;s build it together.
+            This site is just getting started. Want to add photo galleries,
+            episode pages, maps of burger spots, or anything else? Let&apos;s
+            build it together.
           </p>
           <p className="text-slate-600 dark:text-slate-300">
-            Open an issue with ideas or a pull request with improvements. We&apos;re excited to collaborate!
+            Open an issue with ideas or a pull request with improvements.
+            We&apos;re excited to collaborate!
           </p>
         </section>
       </main>
@@ -160,3 +188,104 @@ function SignOutButton() {
   );
 }
 
+function UploadsSection() {
+  const [images, setImages] = useState<Array<{ key: string; url: string }>>([]);
+  const [file, setFile] = useState<File | null>(null);
+  const [status, setStatus] = useState<
+    "idle" | "uploading" | "error" | "success"
+  >("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  async function fetchImages() {
+    try {
+      const res = await fetch("/api/s3/list", { cache: "no-store" });
+      const data = await res.json();
+      if (res.ok) setImages(data.images);
+    } catch (e) {
+      console.error("fetchImages error", e);
+    }
+  }
+
+  useEffect(() => {
+    void fetchImages();
+  }, []);
+
+  async function handleUpload() {
+    if (!file) return;
+    setStatus("uploading");
+    setError(null);
+    try {
+      const presignRes = await fetch("/api/s3/presign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contentType: file.type, filename: file.name }),
+      });
+      const { url } = await presignRes.json();
+      if (!presignRes.ok) throw new Error("Failed to get upload URL");
+
+      const uploadRes = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      if (!uploadRes.ok) throw new Error("Upload failed");
+
+      setStatus("success");
+      setFile(null);
+      await fetchImages();
+    } catch (e) {
+      setStatus("error");
+      setError(e instanceof Error ? e.message : "Something went wrong");
+    }
+  }
+
+  return (
+    <section id="uploads" className="flex flex-col gap-6">
+      <h2 className="text-3xl font-semibold">Your uploads (S3)</h2>
+      <p className="text-slate-600 dark:text-slate-300">
+        Choose an image to upload directly to S3. We&apos;ll show the most
+        recent ones below.
+      </p>
+      <div className="flex items-center gap-3">
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          className="text-sm"
+        />
+        <button
+          onClick={() => void handleUpload()}
+          disabled={!file || status === "uploading"}
+          className="text-sm px-3 py-1.5 rounded-md bg-foreground text-background disabled:opacity-50"
+        >
+          {status === "uploading" ? "Uploading..." : "Upload to S3"}
+        </button>
+        {error && <span className="text-xs text-red-500">{error}</span>}
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+        {images.map((img) => (
+          <div
+            key={img.key}
+            className="aspect-[4/3] overflow-hidden rounded-md"
+          >
+            <Image
+              src={img.url}
+              alt={img.key}
+              className="w-full h-full object-cover"
+              width={1000}
+              height={1000}
+            />
+          </div>
+        ))}
+        {images.length === 0 && (
+          <p className="text-sm text-slate-500">No uploads yet.</p>
+        )}
+      </div>
+      <p className="text-xs text-slate-500">
+        Note: Make sure your S3 bucket CORS allows PUT from this origin and
+        objects are publicly viewable or served via a CDN.
+      </p>
+    </section>
+  );
+}
