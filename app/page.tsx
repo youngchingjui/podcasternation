@@ -86,6 +86,12 @@ export default function Home() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
               {
+                title: "Ximalaya — Album 57225991",
+                desc: "Chinese-language podcast hosted on Ximalaya.",
+                url:
+                  "https://m.ximalaya.com/selfshare/albumnew/57225991?shrpid=17f1743ec51e451&shrdv=8E31F186-A46B-4D88-ACA4-85AF90ADB7EE&shareLevel=1&commandShareId=ad069485b6b23f2b44d88227caf67535&shrh5=iphone&shrid=17f1743ec51ca87&shareTime=1645362801745&uid=392586553&shrdh=1&subType=1107",
+              },
+              {
                 title: "Episode 1 — How We Met",
                 desc: "Origin stories, early projects, and what keeps us collaborating.",
               },
@@ -107,9 +113,20 @@ export default function Home() {
                   {p.desc}
                 </p>
                 <div className="mt-4 flex items-center gap-3">
-                  <button className="text-sm px-3 py-1.5 rounded-md bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900">
-                    Listen
-                  </button>
+                  {p.url ? (
+                    <a
+                      href={p.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm px-3 py-1.5 rounded-md bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                    >
+                      Listen
+                    </a>
+                  ) : (
+                    <button className="text-sm px-3 py-1.5 rounded-md bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900">
+                      Listen
+                    </button>
+                  )}
                   <button className="text-sm px-3 py-1.5 rounded-md border border-slate-300 dark:border-slate-700">
                     Details
                   </button>
@@ -289,3 +306,4 @@ function UploadsSection() {
     </section>
   );
 }
+
