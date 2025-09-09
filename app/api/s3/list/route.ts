@@ -49,10 +49,10 @@ export async function GET(_req: NextRequest) {
         etag: obj.ETag ?? null,
       }));
     return NextResponse.json({ images: items });
-  } catch (e: any) {
+  } catch (e) {
     console.error("list error", e);
     return NextResponse.json(
-      { error: e.message ?? "Internal error" },
+      { error: e instanceof Error ? e.message : "Internal error" },
       { status: 500 },
     );
   }

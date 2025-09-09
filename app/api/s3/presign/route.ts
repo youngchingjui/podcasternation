@@ -64,10 +64,10 @@ export async function POST(req: NextRequest) {
     const url = await getSignedUrl(client, command, { expiresIn: 60 * 5 });
 
     return NextResponse.json({ url, key, publicUrl: publicUrlForKey(key) });
-  } catch (e: any) {
+  } catch (e) {
     console.error("presign error", e);
     return NextResponse.json(
-      { error: e.message ?? "Internal error" },
+      { error: e instanceof Error ? e.message : "Internal error" },
       { status: 500 },
     );
   }
