@@ -155,6 +155,7 @@ export default function Home() {
           prefix="public/burgers/"
           emptyPlaceholderCount={12}
           emptyPlaceholderSrc="/burger-placeholder.svg"
+          uploadFolder="burgers"
         />
 
         {/* Outings collage from S3 */}
@@ -164,6 +165,7 @@ export default function Home() {
           description="A montage of our gatherings."
           prefix="public/outings/"
           emptyPlaceholderCount={0}
+          uploadFolder="outings"
         />
 
         {/* Movies - reviews with Greg's weighted opinion */}

@@ -1,5 +1,7 @@
 import useS3Images from "@/lib/hooks/useS3Images";
 import Image from "next/image";
+import UploadTile from "./UploadTile";
+import type { UploadFolder } from "@/lib/s3Upload";
 
 export function GallerySection({
   id,
@@ -8,6 +10,7 @@ export function GallerySection({
   prefix,
   emptyPlaceholderCount = 0,
   emptyPlaceholderSrc,
+  uploadFolder,
 }: {
   id: string;
   title: string;
@@ -15,8 +18,9 @@ export function GallerySection({
   prefix: string;
   emptyPlaceholderCount?: number;
   emptyPlaceholderSrc?: string;
+  uploadFolder?: UploadFolder;
 }) {
-  const { images, loading } = useS3Images(prefix);
+  const { images, loading, refresh } = useS3Images(prefix);
   const hasImages = images.length > 0;
 
   return (
@@ -44,6 +48,13 @@ export function GallerySection({
               />
             </div>
           ))}
+        {uploadFolder && (
+          <UploadTile
+            folder={uploadFolder}
+            className=""
+            onUploaded={() => void refresh()}
+          />
+        )}
         {!hasImages &&
           emptyPlaceholderSrc &&
           Array.from({ length: emptyPlaceholderCount }).map((_, i) => (
@@ -64,3 +75,4 @@ export function GallerySection({
     </section>
   );
 }
+
