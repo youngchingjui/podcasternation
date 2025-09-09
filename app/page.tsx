@@ -7,7 +7,40 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 
+type S3Image = { key: string; url: string };
+
+function useS3Images(prefix: string) {
+  const [images, setImages] = useState<S3Image[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      try {
+        const res = await fetch(`/api/s3/list?prefix=${encodeURIComponent(prefix)}`, {
+          cache: "no-store",
+        });
+        const data = await res.json();
+        if (!cancelled && res.ok) setImages(data.images as S3Image[]);
+      } catch (e) {
+        // noop
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [prefix]);
+  return { images, loading };
+}
+
 export default function Home() {
+  const hero = useS3Images("public/hero.jpeg");
+  const burgers = useS3Images("public/burgers/");
+  const outings = useS3Images("public/outings/");
+  const heroUrl = hero.images.find((i) => i.key === "public/hero.jpeg")?.url ?? null;
+
   return (
     <>
       <header className="sticky top-0 z-10 bg-background/80 backdrop-blur border-b border-slate-200 dark:border-slate-800">
@@ -21,6 +54,9 @@ export default function Home() {
             </a>
             <a href="#burgers" className="hover:underline">
               Burgers
+            </a>
+            <a href="#outings" className="hover:underline">
+              Outings
             </a>
             <a href="#uploads" className="hover:underline">
               Uploads
@@ -61,18 +97,21 @@ export default function Home() {
                 See Burger Collage
               </a>
             </div>
-            <p className="text-xs text-slate-500 mt-2">
-              Hero image is a placeholder for now — replace
-              /public/hero-placeholder.svg with your photo later.
-            </p>
+            {!heroUrl && (
+              <p className="text-xs text-slate-500 mt-2">
+                Hero image is a placeholder for now — upload to s3://<bucket>/public/hero.jpeg
+                to replace it.
+              </p>
+            )}
           </div>
           <div className="w-full">
             <Image
-              src="/hero-placeholder.svg"
-              alt="Placeholder hero of Greg, Michael & Ching"
+              src={heroUrl ?? "/hero-placeholder.svg"}
+              alt="Hero of Greg, Michael & Ching"
               className="w-full h-72 sm:h-96 object-cover rounded-xl shadow"
-              width={1000}
-              height={1000}
+              width={1600}
+              height={1200}
+              priority
             />
           </div>
         </section>
@@ -119,27 +158,24 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Burgers collage */}
-        <section id="burgers" className="flex flex-col gap-6">
-          <h2 className="text-3xl font-semibold">Burger Collage</h2>
-          <p className="text-slate-600 dark:text-slate-300">
-            A tasty grid of our burger outings. Replace placeholders with your
-            photos.
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="aspect-[4/3] overflow-hidden rounded-md">
-                <Image
-                  src="/burger-placeholder.svg"
-                  alt={`Burger ${i + 1}`}
-                  className="w-full h-full object-cover"
-                  width={1000}
-                  height={1000}
-                />
-              </div>
-            ))}
-          </div>
-        </section>
+        {/* Burgers collage from S3 */}
+        <GallerySection
+          id="burgers"
+          title="Burger Collage"
+          description="A tasty grid of our burger outings."
+          prefix="public/burgers/"
+          emptyPlaceholderCount={12}
+          emptyPlaceholderSrc="/burger-placeholder.svg"
+        />
+
+        {/* Outings collage from S3 */}
+        <GallerySection
+          id="outings"
+          title="Outings"
+          description="A montage of our gatherings."
+          prefix="public/outings/"
+          emptyPlaceholderCount={0}
+        />
 
         {/* Uploads to S3 */}
         <UploadsSection />
@@ -166,6 +202,69 @@ export default function Home() {
         © {new Date().getFullYear()} Greg · Michael · Ching
       </footer>
     </>
+  );
+}
+
+function GallerySection({
+  id,
+  title,
+  description,
+  prefix,
+  emptyPlaceholderCount = 0,
+  emptyPlaceholderSrc,
+}: {
+  id: string;
+  title: string;
+  description?: string;
+  prefix: string;
+  emptyPlaceholderCount?: number;
+  emptyPlaceholderSrc?: string;
+}) {
+  const { images, loading } = useS3Images(prefix);
+  const hasImages = images.length > 0;
+
+  return (
+    <section id={id} className="flex flex-col gap-6">
+      <h2 className="text-3xl font-semibold">{title}</h2>
+      {description && (
+        <p className="text-slate-600 dark:text-slate-300">{description}</p>
+      )}
+      {!hasImages && loading && (
+        <p className="text-sm text-slate-500">Loading images...</p>
+      )}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+        {hasImages &&
+          images.map((img) => (
+            <div
+              key={img.key}
+              className="aspect-[4/3] overflow-hidden rounded-md"
+            >
+              <Image
+                src={img.url}
+                alt={img.key}
+                className="w-full h-full object-cover"
+                width={1200}
+                height={900}
+              />
+            </div>
+          ))}
+        {!hasImages && emptyPlaceholderSrc &&
+          Array.from({ length: emptyPlaceholderCount }).map((_, i) => (
+            <div key={i} className="aspect-[4/3] overflow-hidden rounded-md">
+              <Image
+                src={emptyPlaceholderSrc}
+                alt={`${title} ${i + 1}`}
+                className="w-full h-full object-cover"
+                width={1200}
+                height={900}
+              />
+            </div>
+          ))}
+        {!hasImages && !emptyPlaceholderSrc && !loading && (
+          <p className="text-sm text-slate-500">No images yet.</p>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -289,3 +388,4 @@ function UploadsSection() {
     </section>
   );
 }
+
