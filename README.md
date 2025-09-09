@@ -32,12 +32,14 @@ This repo now supports direct image uploads to Amazon S3 and displays the images
 Provide these environment variables (e.g., in a `.env.local` file at the repo root).
 
 Required:
+
 - AWS_ACCESS_KEY_ID
 - AWS_SECRET_ACCESS_KEY
 - AWS_REGION (e.g., us-east-1)
 - S3_BUCKET_NAME (name of your bucket)
 
 Optional but recommended:
+
 - S3_PUBLIC_BASE_URL: Base URL used to display the images. Examples:
   - Your CloudFront domain, e.g. `https://cdn.example.com`
   - Or the S3 regional domain, e.g. `https://my-bucket.s3.us-east-1.amazonaws.com`
@@ -56,6 +58,7 @@ Bucket CORS configuration (so the browser can PUT directly to S3):
 ```
 
 Bucket access policy options to make images viewable:
+
 - Simplest: Set `ACL: public-read` on upload (already done in the presign route) and allow public reads in your bucket policy.
 - Preferred: Serve through CloudFront (set `S3_PUBLIC_BASE_URL` to your CloudFront distribution URL) and keep bucket private except for the distribution.
 
@@ -66,6 +69,7 @@ pnpm run dev
 ```
 
 The code that powers this lives in:
+
 - API routes: `app/api/s3/presign/route.ts` and `app/api/s3/list/route.ts`
 - UI section: `app/page.tsx` (component `UploadsSection`)
 
@@ -88,4 +92,3 @@ Join thousands of developers building full-stack apps with Convex:
 
 - Join the [Convex Discord community](https://convex.dev/community) to get help in real-time.
 - Follow [Convex on GitHub](https://github.com/get-convex/), star and contribute to the open-source implementation of Convex.
-

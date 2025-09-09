@@ -45,7 +45,10 @@ export async function POST(req: NextRequest) {
       filename?: string;
     };
     if (!contentType) {
-      return NextResponse.json({ error: "contentType required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "contentType required" },
+        { status: 400 },
+      );
     }
 
     const key = keyFrom(filename);
@@ -63,7 +66,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ url, key, publicUrl: publicUrlForKey(key) });
   } catch (e: any) {
     console.error("presign error", e);
-    return NextResponse.json({ error: e.message ?? "Internal error" }, { status: 500 });
+    return NextResponse.json(
+      { error: e.message ?? "Internal error" },
+      { status: 500 },
+    );
   }
 }
-

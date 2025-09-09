@@ -28,13 +28,20 @@ export async function GET(_req: NextRequest) {
   try {
     assertEnv();
     const client = new S3Client({ region: REGION });
-    const command = new ListObjectsV2Command({ Bucket: BUCKET, Prefix: PREFIX, MaxKeys: 30 });
+    const command = new ListObjectsV2Command({
+      Bucket: BUCKET,
+      Prefix: PREFIX,
+      MaxKeys: 30,
+    });
     const res = await client.send(command);
     const items = (res.Contents ?? [])
-      .filter(obj => obj.Key && !obj.Key.endsWith("/"))
-      .sort((a, b) => (b.LastModified?.getTime() ?? 0) - (a.LastModified?.getTime() ?? 0))
+      .filter((obj) => obj.Key && !obj.Key.endsWith("/"))
+      .sort(
+        (a, b) =>
+          (b.LastModified?.getTime() ?? 0) - (a.LastModified?.getTime() ?? 0),
+      )
       .slice(0, 24)
-      .map(obj => ({
+      .map((obj) => ({
         key: obj.Key!,
         url: publicUrlForKey(obj.Key!),
         size: obj.Size ?? 0,
@@ -44,7 +51,9 @@ export async function GET(_req: NextRequest) {
     return NextResponse.json({ images: items });
   } catch (e: any) {
     console.error("list error", e);
-    return NextResponse.json({ error: e.message ?? "Internal error" }, { status: 500 });
+    return NextResponse.json(
+      { error: e.message ?? "Internal error" },
+      { status: 500 },
+    );
   }
 }
-
